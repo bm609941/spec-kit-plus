@@ -59,7 +59,7 @@ Optional:
 
 Location Rules (all under history/prompts/):
   - constitution → history/prompts/constitution/
-  - spec, plan, tasks, red, green, refactor, explainer, misc → history/prompts/<feature-name>/
+  - spec, plan, tasks, red, green, refactor, explainer, misc → history/prompts/<branch-name>/
   - general → history/prompts/general/ (catch-all for non-feature work)
 
 Output:
@@ -177,14 +177,9 @@ case "$STAGE" in
       exit 1
     fi
 
-    # Extract feature name (remove numbering prefix if present)
-    FEATURE_NAME="$FEATURE"
-    if [[ "$FEATURE_NAME" =~ ^([0-9]{3})-(.*)$ ]]; then
-      FEATURE_NAME="${BASH_REMATCH[2]}"
-    fi
-
-    # Feature prompts go to history/prompts/<feature-name>/
-    PROMPTS_DIR="$REPO_ROOT/history/prompts/$FEATURE_NAME"
+    # Feature prompts go to history/prompts/<branch-name>/ (same as specs/<branch-name>/)
+    # This keeps naming consistent across branch, specs, and prompts directories
+    PROMPTS_DIR="$REPO_ROOT/history/prompts/$FEATURE"
     VALID_STAGES=("spec" "plan" "tasks" "red" "green" "refactor" "explainer" "misc")
     CONTEXT="feature"
     ;;

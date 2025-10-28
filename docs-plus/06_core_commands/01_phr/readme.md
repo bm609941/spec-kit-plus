@@ -72,7 +72,9 @@ Also after general work:
 
 All PHRs are consolidated under `history/prompts/` with logical subdirectories. This provides a single, clear location for all prompt history while keeping them organized by purpose and context.
 
-**Main Rule:** `history/prompts/` → `constitution/` | `<feature-name>/` | `general/`
+**Main Rule:** `history/prompts/` → `constitution/` | `<branch-name>/` | `general/`
+
+The branch name matches the `specs/<branch-name>/` directory, keeping naming consistent across your project.
 
 ### Constitution (Project Principles)
 
@@ -96,7 +98,7 @@ history/
 
 ### Feature-Specific (Feature Implementation Work)
 
-**Location:** `history/prompts/<feature-name>/`
+**Location:** `history/prompts/<branch-name>/`
 **Stages:** `spec`, `plan`, `tasks`, `red`, `green`, `refactor`, `explainer`, `misc`
 **Naming:** `0001-title.spec.prompt.md`
 
@@ -108,8 +110,11 @@ history/
 - Code explanations (explainer)
 - Other feature-specific work (misc)
 
-**Feature name extraction:** Automatically extracted from numbered feature directories
-Example: `001-authentication` → `history/prompts/authentication/`
+**Naming consistency:** The prompts directory name matches the branch and specs directory
+Example: `001-authentication` appears in:
+- Branch: `001-authentication`
+- Specs: `specs/001-authentication/`
+- Prompts: `history/prompts/001-authentication/`
 
 **Example:**
 
@@ -118,15 +123,15 @@ history/
 └── prompts/
     ├── constitution/
     │   └── 0001-quality-standards.constitution.prompt.md
-    ├── authentication/
+    ├── 001-authentication/
     │   ├── 0001-design-jwt-system.spec.prompt.md
-    │   ├── 0002-design-jwt-system.architect.prompt.md
+    │   ├── 0002-design-jwt-system.plan.prompt.md
     │   ├── 0003-implement-jwt.green.prompt.md
     │   ├── 0004-fix-token-bug.red.prompt.md
     │   └── 0005-extract-middleware.refactor.prompt.md
-    └── database/
+    └── 002-database/
         ├── 0001-design-schema.spec.prompt.md
-        ├── 0002-design-schema.architect.prompt.md
+        ├── 0002-design-schema.plan.prompt.md
         └── 0003-optimize-queries.refactor.prompt.md
 ```
 
@@ -157,10 +162,10 @@ history/
 
 - **Local sequence numbering**: Each directory starts at 0001
 - **Stage-based extensions**: Files show their type (`.spec.prompt.md`, `.red.prompt.md`, `.refactor.prompt.md`)
-- **Auto-detection**: Script automatically extracts feature name from numbered feature directories (`001-auth` → `auth`)
+- **Consistent naming**: Feature directories match the branch name (`001-auth` in all three locations: branch, specs, prompts)
 - **Clear location rules**:
   - `constitution` → always `history/prompts/constitution/`
-  - Feature stages → `history/prompts/<feature-name>/` (requires feature context)
+  - Feature stages → `history/prompts/<branch-name>/` (same as specs/<branch-name>/)
   - `general` → always `history/prompts/general/`
 
 ---
@@ -179,20 +184,20 @@ All stages are now organized under `history/prompts/` with clear routing:
 
 ### Feature Stages (TDD Cycle)
 
-| Stage       | Location                    | Extension              | TDD Phase      | When to Use                                 |
-| ----------- | --------------------------- | ---------------------- | -------------- | ------------------------------------------- |
-| `spec`      | `history/prompts/<feature>/` | `.spec.prompt.md`      | **Specify**    | Writing feature specifications               |
-| `plan`      | `history/prompts/<feature>/` | `.plan.prompt.md`      | **Plan**       | Design, planning, API contracts             |
-| `red`       | `history/prompts/<feature>/` | `.red.prompt.md`       | **Red**        | Debugging, fixing errors, test failures     |
-| `green`     | `history/prompts/<feature>/` | `.green.prompt.md`     | **Green**      | Implementation, new features, passing tests |
-| `refactor`  | `history/prompts/<feature>/` | `.refactor.prompt.md`  | **Refactor**   | Code cleanup, optimization                  |
-| `explainer` | `history/prompts/<feature>/` | `.explainer.prompt.md` | **Understand** | Code explanations, documentation            |
-| `misc`      | `history/prompts/<feature>/` | `.misc.prompt.md`      | **Other**      | Uncategorized feature-specific work         |
+| Stage       | Location                      | Extension              | TDD Phase      | When to Use                                 |
+| ----------- | ----------------------------- | ---------------------- | -------------- | ------------------------------------------- |
+| `spec`      | `history/prompts/<branch-name>/` | `.spec.prompt.md`      | **Specify**    | Writing feature specifications               |
+| `plan`      | `history/prompts/<branch-name>/` | `.plan.prompt.md`      | **Plan**       | Design, planning, API contracts             |
+| `red`       | `history/prompts/<branch-name>/` | `.red.prompt.md`       | **Red**        | Debugging, fixing errors, test failures     |
+| `green`     | `history/prompts/<branch-name>/` | `.green.prompt.md`     | **Green**      | Implementation, new features, passing tests |
+| `refactor`  | `history/prompts/<branch-name>/` | `.refactor.prompt.md`  | **Refactor**   | Code cleanup, optimization                  |
+| `explainer` | `history/prompts/<branch-name>/` | `.explainer.prompt.md` | **Understand** | Code explanations, documentation            |
+| `misc`      | `history/prompts/<branch-name>/` | `.misc.prompt.md`      | **Other**      | Uncategorized feature-specific work         |
 
 **Examples:**
-- `history/prompts/authentication/0001-design-jwt-system.plan.prompt.md`
-- `history/prompts/authentication/0003-implement-jwt.green.prompt.md`
-- `history/prompts/authentication/0004-fix-token-bug.red.prompt.md`
+- `history/prompts/001-authentication/0001-design-jwt-system.plan.prompt.md`
+- `history/prompts/001-authentication/0003-implement-jwt.green.prompt.md`
+- `history/prompts/001-authentication/0004-fix-token-bug.red.prompt.md`
 
 ### General Stage (Non-Feature Work)
 

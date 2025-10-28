@@ -7,17 +7,47 @@ All notable changes to the Specify CLI and templates are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.17] - 2025-10-28
+
+### Changed
+
+- **Consistent Feature Directory Naming Across All Locations**
+  - Feature directories now use the **same name** across branch, specs, and prompts locations
+  - Example: Feature `001-auth` uses:
+    - Branch name: `001-auth`
+    - Specs directory: `specs/001-auth/`
+    - Prompts directory: `history/prompts/001-auth/` (was `history/prompts/auth/`)
+  - **Why this matters**: Large teams benefit from predictable, consistent naming:
+    - Sorted ordering: `001`, `002`, `003`, etc. sort naturally
+    - Unified grep patterns: Single search finds feature across all locations
+    - No parsing overhead: Teams use same identifier everywhere
+    - Automation-friendly: CI/CD scripts need no name extraction logic
+  - Updated `scripts/bash/create-phr.sh` routing logic to use full branch name
+  - Updated `scripts/bash/create-new-feature.sh` and `scripts/powershell/create-new-feature.ps1` auto-creation logic
+
 ## [0.0.16] - 2025-10-28
 
 ### Changed
 
+- **Auto-create PHR Directories When Specifying Features**
+  - When `/sp.specify` creates a new feature, it now automatically creates the corresponding `history/prompts/<branch-name>/` directory
+  - **Consistent naming**: Feature directories now use the same name across all three locations:
+    - Branch: `001-auth`
+    - Specs: `specs/001-auth/`
+    - Prompts: `history/prompts/001-auth/`
+  - Eliminates manual directory creation and "first PHR surprise"
+  - Improves team efficiency with predictable, sorted directory structures
+  - Users can immediately start documenting their feature work after specification
+  - Updated both `scripts/bash/create-new-feature.sh` and `scripts/powershell/create-new-feature.ps1`
+
 - **Reorganized Prompt History Record (PHR) Directory Structure**
   - All prompts now consolidated under `history/prompts/` with logical subdirectories:
     - `history/prompts/constitution/` - Constitution stage prompts (project principles)
-    - `history/prompts/<feature-name>/` - Feature-specific prompts (spec, plan, tasks, red, green, refactor, explainer, misc)
+    - `history/prompts/<branch-name>/` - Feature-specific prompts (spec, plan, tasks, red, green, refactor, explainer, misc)
     - `history/prompts/general/` - General/catch-all prompts for non-feature work
-  - **Rationale:** Developers reported confusion with prompts split between `history/` and `specs/<feature>/prompts/`. Consolidating under `history/prompts/` provides a single, clear location for all prompt history.
-  - Automatic feature name extraction from numbered directories (e.g., `001-auth` → `auth`)
+  - **Consistent naming across project**: Feature directories use the same name everywhere (e.g., `001-auth` in branch, specs, and prompts)
+  - **Rationale:** Developers reported confusion with prompts split between `history/` and `specs/<feature>/prompts/`. Consolidating under `history/prompts/` with consistent naming provides a single, clear, predictable location for all prompt history.
+  - Directory structure is predictable and team-friendly (numbered directories sort chronologically)
   - Updated `scripts/bash/create-phr.sh` with new routing logic
   - Updated `templates/commands/phr.md` with new directory mapping
   - Updated `protocol-templates/AGENTS.md` with new routing documentation
@@ -33,6 +63,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `create-release-packages.sh` now properly generates rule files for AMP agent (previously missing from generate_agent_rules)
+
+### Optimized
+
+- **Reduced package bloat**: Removed redundant files from release packages:
+  - Generic `AGENTS.md` no longer shipped (replaced by agent-specific files: CLAUDE.md, GEMINI.md, etc.)
+  - `command-rules.md` no longer shipped as standalone file (automatically appended to all commands during build)
+  - Result: Cleaner packages, only user-facing files included
 
 ## [0.0.20] - 2025-10-14
 

@@ -128,6 +128,9 @@ build_variant() {
   
   [[ -d memory ]] && { cp -r memory "$SPEC_DIR/"; echo "Copied memory -> .specify"; }
 
+  # Remove command-rules.md from package (internal metadata, appended to commands during build)
+  rm -f "$SPEC_DIR/memory/command-rules.md" 2>/dev/null || true
+
   # NOTE: AGENTS.md is NOT copied to project root.
   # Instead, agent-specific rule files are generated (CLAUDE.md, GEMINI.md, etc.)
   # by generate_agent_rules() below. These files already contain all AGENTS.md content
