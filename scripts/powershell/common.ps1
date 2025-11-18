@@ -1,7 +1,66 @@
 #!/usr/bin/env pwsh
 # Common PowerShell functions analogous to common.sh
 
+# Check if we're in a git worktree (not the main working tree)
+function Test-IsWorktree {
+    try {
+        $gitDir = git rev-parse --git-dir 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            return $false  # Not in a git repo
+        }
+
+        # In a worktree, .git is a file, not a directory
+        # Or git-dir contains "worktrees"
+        return ((Test-Path $gitDir -PathType Leaf) -or ($gitDir -like "*\worktrees\*") -or ($gitDir -like "*/worktrees/*"))
+    } catch {
+        return $false
+    }
+}
+
+# Get the main repository root (not worktree directory)
+# This is where specs/, history/, templates/ should be accessed from
+function Get-GitCommonDir {
+    try {
+        $commonDir = git rev-parse --git-common-dir 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            return $null
+        }
+
+        # Get the parent of .git directory
+        return (Resolve-Path (Join-Path $commonDir "..")).Path
+    } catch {
+        return $null
+    }
+}
+
+# Get repository root, with fallback for non-git repositories
+# In worktree mode, this returns the MAIN repo root (where specs/ lives)
+# Not the worktree directory
 function Get-RepoRoot {
+    try {
+        $result = git rev-parse --show-toplevel 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            # Check if we're in a worktree
+            if (Test-IsWorktree) {
+                # Return main repo root, not worktree directory
+                $commonDir = Get-GitCommonDir
+                if ($commonDir) {
+                    return $commonDir
+                }
+            }
+            # Normal git repo
+            return $result
+        }
+    } catch {
+        # Git command failed
+    }
+
+    # Fall back to script location for non-git repos
+    return (Resolve-Path (Join-Path $PSScriptRoot "../../..")).Path
+}
+
+# Get current worktree directory (where we're currently working)
+function Get-WorktreeDir {
     try {
         $result = git rev-parse --show-toplevel 2>$null
         if ($LASTEXITCODE -eq 0) {
@@ -10,9 +69,8 @@ function Get-RepoRoot {
     } catch {
         # Git command failed
     }
-    
-    # Fall back to script location for non-git repos
-    return (Resolve-Path (Join-Path $PSScriptRoot "../../..")).Path
+
+    return (Get-Location).Path
 }
 
 function Get-CurrentBranch {
@@ -133,5 +191,115 @@ function Test-DirHasFiles {
         Write-Output "  ✗ $Description"
         return $false
     }
+}
+
+# ============================================================================
+# Git Worktree Functions
+# ============================================================================
+
+# List all git worktrees
+function Get-Worktrees {
+    if (-not (Test-HasGit)) {
+        Write-Error "Not in a git repository"
+        return
+    }
+
+    git worktree list
+}
+
+# Create a new git worktree for a feature branch
+# Usage: New-Worktree -BranchName "001-feature" [-WorktreePath "path"]
+function New-Worktree {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$BranchName,
+
+        [Parameter(Mandatory=$false)]
+        [string]$WorktreePath = ""
+    )
+
+    if (-not (Test-HasGit)) {
+        Write-Error "Not in a git repository"
+        return
+    }
+
+    if ([string]::IsNullOrWhiteSpace($BranchName)) {
+        Write-Error "Branch name required"
+        Write-Output "Usage: New-Worktree -BranchName <branch-name> [-WorktreePath <path>]"
+        return
+    }
+
+    # Get repo root for default path
+    $repoRoot = Get-RepoRoot
+
+    # Default worktree path: ../worktrees/<branch-name>
+    if ([string]::IsNullOrWhiteSpace($WorktreePath)) {
+        $worktreesDir = Join-Path (Split-Path $repoRoot -Parent) "worktrees"
+        New-Item -Path $worktreesDir -ItemType Directory -Force | Out-Null
+        $WorktreePath = Join-Path $worktreesDir $BranchName
+    }
+
+    # Check if branch already exists
+    try {
+        git rev-parse --verify $BranchName 2>$null | Out-Null
+        $branchExists = ($LASTEXITCODE -eq 0)
+    } catch {
+        $branchExists = $false
+    }
+
+    if ($branchExists) {
+        # Branch exists, create worktree from it
+        Write-Host "Creating worktree for existing branch '$BranchName'..." -ForegroundColor Yellow
+        git worktree add $WorktreePath $BranchName
+    } else {
+        # Create new branch and worktree
+        Write-Host "Creating new branch '$BranchName' and worktree..." -ForegroundColor Yellow
+        git worktree add -b $BranchName $WorktreePath
+    }
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Output $WorktreePath
+        return $WorktreePath
+    } else {
+        return $null
+    }
+}
+
+# Remove a git worktree
+# Usage: Remove-Worktree -WorktreePath "path"
+function Remove-Worktree {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$WorktreePath
+    )
+
+    if (-not (Test-HasGit)) {
+        Write-Error "Not in a git repository"
+        return
+    }
+
+    if ([string]::IsNullOrWhiteSpace($WorktreePath)) {
+        Write-Error "Worktree path required"
+        Write-Output "Usage: Remove-Worktree -WorktreePath <path>"
+        return
+    }
+
+    git worktree remove $WorktreePath
+}
+
+# Prune stale worktree references
+function Remove-StaleWorktrees {
+    if (-not (Test-HasGit)) {
+        Write-Error "Not in a git repository"
+        return
+    }
+
+    git worktree prune
+}
+
+# Check if worktree mode is enabled
+# Checks for SPECIFY_WORKTREE_MODE environment variable
+function Test-WorktreeModeEnabled {
+    return ($env:SPECIFY_WORKTREE_MODE -eq "true")
 }
 

@@ -116,6 +116,11 @@ check_existing_branches() {
 # were initialised with --no-git.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Source common.sh for shared functions (including worktree support)
+if [ -f "$SCRIPT_DIR/common.sh" ]; then
+    source "$SCRIPT_DIR/common.sh"
+fi
+
 if git rev-parse --show-toplevel >/dev/null 2>&1; then
     REPO_ROOT=$(git rev-parse --show-toplevel)
     HAS_GIT=true
@@ -235,7 +240,27 @@ if [ ${#BRANCH_NAME} -gt $MAX_BRANCH_LENGTH ]; then
 fi
 
 if [ "$HAS_GIT" = true ]; then
-    git checkout -b "$BRANCH_NAME"
+    # Check if worktree mode is enabled
+    if [[ "${SPECIFY_WORKTREE_MODE:-false}" == "true" ]]; then
+        >&2 echo "[specify] Creating worktree for branch: $BRANCH_NAME"
+
+        # Create worktree using common.sh function
+        WORKTREE_PATH=$(create_worktree "$BRANCH_NAME")
+
+        if [[ $? -eq 0 ]]; then
+            >&2 echo "[specify] ✓ Worktree created at: $WORKTREE_PATH"
+            >&2 echo "[specify] To switch to this worktree, run: cd $WORKTREE_PATH"
+            >&2 echo "[specify] Then run: /sp.specify \"$ARGS\" to create the spec in the worktree"
+            >&2 echo ""
+            >&2 echo "[specify] Note: specs/ and history/ are shared from the main repo"
+        else
+            >&2 echo "[specify] ✗ Failed to create worktree"
+            exit 1
+        fi
+    else
+        # Standard workflow: create branch in current repo
+        git checkout -b "$BRANCH_NAME"
+    fi
 else
     >&2 echo "[specify] Warning: Git repository not detected; skipped branch creation for $BRANCH_NAME"
 fi

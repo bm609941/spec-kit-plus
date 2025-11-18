@@ -1,14 +1,56 @@
 #!/usr/bin/env bash
 # Common functions and variables for all scripts
 
+# Check if we're in a git worktree (not the main working tree)
+is_worktree() {
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+        return 1  # Not in a git repo
+    fi
+
+    local git_dir=$(git rev-parse --git-dir 2>/dev/null)
+    # In a worktree, .git is a file, not a directory
+    # Or git-dir contains "worktrees"
+    [[ -f "$git_dir" ]] || [[ "$git_dir" == *"/worktrees/"* ]]
+}
+
+# Get the main repository root (not worktree directory)
+# This is where specs/, history/, templates/ should be accessed from
+get_git_common_dir() {
+    if ! git rev-parse --git-common-dir >/dev/null 2>&1; then
+        return 1
+    fi
+
+    local common_dir=$(git rev-parse --git-common-dir 2>/dev/null)
+    # Get the parent of .git directory
+    (cd "$common_dir/.." && pwd)
+}
+
 # Get repository root, with fallback for non-git repositories
+# In worktree mode, this returns the MAIN repo root (where specs/ lives)
+# Not the worktree directory
 get_repo_root() {
     if git rev-parse --show-toplevel >/dev/null 2>&1; then
-        git rev-parse --show-toplevel
+        # Check if we're in a worktree
+        if is_worktree; then
+            # Return main repo root, not worktree directory
+            get_git_common_dir
+        else
+            # Normal git repo
+            git rev-parse --show-toplevel
+        fi
     else
         # Fall back to script location for non-git repos
         local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
         (cd "$script_dir/../../.." && pwd)
+    fi
+}
+
+# Get current worktree directory (where we're currently working)
+get_worktree_dir() {
+    if git rev-parse --show-toplevel >/dev/null 2>&1; then
+        git rev-parse --show-toplevel
+    else
+        pwd
     fi
 }
 
@@ -153,4 +195,99 @@ EOF
 
 check_file() { [[ -f "$1" ]] && echo "  ✓ $2" || echo "  ✗ $2"; }
 check_dir() { [[ -d "$1" && -n $(ls -A "$1" 2>/dev/null) ]] && echo "  ✓ $2" || echo "  ✗ $2"; }
+
+# ============================================================================
+# Git Worktree Functions
+# ============================================================================
+
+# List all git worktrees
+list_worktrees() {
+    if ! has_git; then
+        echo "ERROR: Not in a git repository" >&2
+        return 1
+    fi
+
+    git worktree list
+}
+
+# Create a new git worktree for a feature branch
+# Usage: create_worktree <branch-name> [worktree-path]
+create_worktree() {
+    local branch_name="$1"
+    local worktree_path="${2:-}"
+
+    if ! has_git; then
+        echo "ERROR: Not in a git repository" >&2
+        return 1
+    fi
+
+    if [[ -z "$branch_name" ]]; then
+        echo "ERROR: Branch name required" >&2
+        echo "Usage: create_worktree <branch-name> [worktree-path]" >&2
+        return 1
+    fi
+
+    # Get repo root for default path
+    local repo_root=$(get_repo_root)
+
+    # Default worktree path: ../worktrees/<branch-name>
+    if [[ -z "$worktree_path" ]]; then
+        local worktrees_dir="$repo_root/../worktrees"
+        mkdir -p "$worktrees_dir"
+        worktree_path="$worktrees_dir/$branch_name"
+    fi
+
+    # Check if branch already exists
+    if git rev-parse --verify "$branch_name" >/dev/null 2>&1; then
+        # Branch exists, create worktree from it
+        echo "Creating worktree for existing branch '$branch_name'..." >&2
+        git worktree add "$worktree_path" "$branch_name"
+    else
+        # Create new branch and worktree
+        echo "Creating new branch '$branch_name' and worktree..." >&2
+        git worktree add -b "$branch_name" "$worktree_path"
+    fi
+
+    if [[ $? -eq 0 ]]; then
+        echo "$worktree_path"
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Remove a git worktree
+# Usage: remove_worktree <worktree-path>
+remove_worktree() {
+    local worktree_path="$1"
+
+    if ! has_git; then
+        echo "ERROR: Not in a git repository" >&2
+        return 1
+    fi
+
+    if [[ -z "$worktree_path" ]]; then
+        echo "ERROR: Worktree path required" >&2
+        echo "Usage: remove_worktree <worktree-path>" >&2
+        return 1
+    fi
+
+    git worktree remove "$worktree_path"
+}
+
+# Prune stale worktree references
+prune_worktrees() {
+    if ! has_git; then
+        echo "ERROR: Not in a git repository" >&2
+        return 1
+    fi
+
+    git worktree prune
+}
+
+# Check if worktree mode is enabled
+# Checks for SPECIFY_WORKTREE_MODE environment variable
+is_worktree_mode_enabled() {
+    [[ "${SPECIFY_WORKTREE_MODE:-false}" == "true" ]]
+}
 
