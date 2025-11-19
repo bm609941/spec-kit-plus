@@ -101,7 +101,6 @@ The main workflow for building features:
 - **Tasks** - Break the plan into small, doable tasks
 - **Analyze** (Optional) - Check that documentation is complete
 - **Implement** - Let the AI build the features
-- **Review** (Recommended) - AI-assisted code review against spec and quality standards
 - **PHR** - Your conversations are automatically saved in `history/prompts/` organized by feature and stage
 - **Test & Merge** - Test everything and merge to main branch
 

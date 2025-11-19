@@ -83,34 +83,30 @@ find_repo_root() {
 # Function to check existing branches (local and remote) and return next available number
 check_existing_branches() {
     local short_name="$1"
-
+    
     # Fetch all remotes to get latest branch info (suppress errors if no remotes)
-    git fetch --all --prune >/dev/null 2>/dev/null || true
-
+    git fetch --all --prune 2>/dev/null || true
+    
     # Find all branches matching the pattern using git ls-remote (more reliable)
-    # Extract numeric prefix (001, 002, etc.) from branch names
-    local remote_branches=$(git ls-remote --heads origin 2>/dev/null | grep -E "refs/heads/[0-9]+-${short_name}$" | sed 's/.*\/\([0-9]\+\)-.*/\1/')
-
+    local remote_branches=$(git ls-remote --heads origin 2>/dev/null | grep -E "refs/heads/[0-9]+-${short_name}$" | sed 's/.*\/\([0-9]*\)-.*/\1/' | sort -n)
+    
     # Also check local branches
-    local local_branches=$(git branch 2>/dev/null | grep -E "^[* ]*[0-9]+-${short_name}$" | sed 's/^[* ]*//' | sed 's/-.\+$//')
-
-    # Check specs directory as well (most reliable source)
+    local local_branches=$(git branch 2>/dev/null | grep -E "^[* ]*[0-9]+-${short_name}$" | sed 's/^[* ]*//' | sed 's/-.*//' | sort -n)
+    
+    # Check specs directory as well
     local spec_dirs=""
     if [ -d "$SPECS_DIR" ]; then
-        spec_dirs=$(find "$SPECS_DIR" -maxdepth 1 -type d -name "[0-9]*-*" 2>/dev/null | xargs -n1 basename 2>/dev/null | grep -E "^[0-9]+" | sed 's/-.*//')
+        spec_dirs=$(find "$SPECS_DIR" -maxdepth 1 -type d -name "[0-9]*-${short_name}" 2>/dev/null | xargs -n1 basename 2>/dev/null | sed 's/-.*//' | sort -n)
     fi
-
+    
     # Combine all sources and get the highest number
-    # Force base-10 integer interpretation to handle leading zeros (01, 001, etc.)
     local max_num=0
     for num in $remote_branches $local_branches $spec_dirs; do
-        # Strip leading zeros and convert to integer
-        local int_num=$((10#$num))
-        if [ "$int_num" -gt "$max_num" ]; then
-            max_num=$int_num
+        if [ "$num" -gt "$max_num" ]; then
+            max_num=$num
         fi
     done
-
+    
     # Return next number
     echo $((max_num + 1))
 }
@@ -120,43 +116,16 @@ check_existing_branches() {
 # were initialised with --no-git.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Source common.sh for shared functions (including worktree support)
-if [ -f "$SCRIPT_DIR/common.sh" ]; then
-    source "$SCRIPT_DIR/common.sh"
-    # Use worktree-aware get_repo_root() from common.sh
-    REPO_ROOT=$(get_repo_root)
-    if has_git; then
-        HAS_GIT=true
-    else
-        HAS_GIT=false
-    fi
+if git rev-parse --show-toplevel >/dev/null 2>&1; then
+    REPO_ROOT=$(git rev-parse --show-toplevel)
+    HAS_GIT=true
 else
-    # Fallback when common.sh not available
-    if git rev-parse --show-toplevel >/dev/null 2>&1; then
-        REPO_ROOT=$(git rev-parse --show-toplevel)
-        HAS_GIT=true
-    else
-        REPO_ROOT="$(find_repo_root "$SCRIPT_DIR")"
-        if [ -z "$REPO_ROOT" ]; then
-            echo "Error: Could not determine repository root. Please run this script from within the repository." >&2
-            exit 1
-        fi
-        HAS_GIT=false
-    fi
-fi
-
-# Check for detached HEAD state
-if [ "$HAS_GIT" = true ]; then
-    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-    if [ "$CURRENT_BRANCH" = "HEAD" ]; then
-        echo "ERROR: Currently in detached HEAD state" >&2
-        echo "" >&2
-        echo "Please checkout or create a feature branch first:" >&2
-        echo "  git checkout -b 001-feature-name" >&2
-        echo "  or" >&2
-        echo "  git checkout main" >&2
+    REPO_ROOT="$(find_repo_root "$SCRIPT_DIR")"
+    if [ -z "$REPO_ROOT" ]; then
+        echo "Error: Could not determine repository root. Please run this script from within the repository." >&2
         exit 1
     fi
+    HAS_GIT=false
 fi
 
 cd "$REPO_ROOT"
@@ -266,27 +235,7 @@ if [ ${#BRANCH_NAME} -gt $MAX_BRANCH_LENGTH ]; then
 fi
 
 if [ "$HAS_GIT" = true ]; then
-    # Check if worktree mode is enabled
-    if [[ "${SPECIFY_WORKTREE_MODE:-false}" == "true" ]]; then
-        >&2 echo "[specify] Creating worktree for branch: $BRANCH_NAME"
-
-        # Create worktree using common.sh function
-        WORKTREE_PATH=$(create_worktree "$BRANCH_NAME")
-
-        if [[ $? -eq 0 ]]; then
-            >&2 echo "[specify] ✓ Worktree created at: $WORKTREE_PATH"
-            >&2 echo "[specify] To switch to this worktree, run: cd $WORKTREE_PATH"
-            >&2 echo "[specify] Then run: /sp.specify \"$ARGS\" to create the spec in the worktree"
-            >&2 echo ""
-            >&2 echo "[specify] Note: specs/ and history/ are shared from the main repo"
-        else
-            >&2 echo "[specify] ✗ Failed to create worktree"
-            exit 1
-        fi
-    else
-        # Standard workflow: create branch in current repo
-        git checkout -b "$BRANCH_NAME"
-    fi
+    git checkout -b "$BRANCH_NAME"
 else
     >&2 echo "[specify] Warning: Git repository not detected; skipped branch creation for $BRANCH_NAME"
 fi
