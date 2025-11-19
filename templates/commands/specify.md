@@ -19,39 +19,6 @@ The text the user typed after `/sp.specify` in the triggering message **is** the
 
 Given that feature description, do this:
 
-0. **Detect existing feature branch** (for git worktree workflows):
-
-   a. Check if we're in a worktree with an existing feature branch:
-
-      ```bash
-      CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
-
-      # Check if branch matches: NNN-name or feature-NNN-name patterns
-      if [[ "$CURRENT_BRANCH" =~ ^([0-9]{3})-(.+)$ ]] || [[ "$CURRENT_BRANCH" =~ ^feature-([0-9]{3})-(.+)$ ]]; then
-        echo "EXISTING_FEATURE_BRANCH_DETECTED"
-      fi
-      ```
-
-   b. If existing feature branch detected:
-      - Extract feature number and short-name from branch name
-      - Example patterns:
-        - `001-user-auth` → number=001, name=user-auth
-        - `feature-002-dashboard` → number=002, name=dashboard
-      - Set feature directory: `FEATURE_DIR=specs/{number}-{name}`
-      - Set spec file: `SPEC_FILE={FEATURE_DIR}/spec.md`
-      - **Skip steps 1-2** (branch already exists - no need to create)
-      - **Proceed to step 3** (load spec template)
-      - If spec.md already exists at `SPEC_FILE`:
-        - Inform user that spec exists
-        - Ask if they want to update/overwrite it or create a new version
-        - If update: proceed with writing to existing file
-        - If new version: create `spec-v2.md`, `spec-v3.md`, etc.
-
-   c. If NO existing feature branch detected (standard workflow):
-      - Proceed normally with steps 1-2 (generate name and create new branch/worktree)
-
-   **Note**: This step enables seamless worktree workflows where branches are created via `/sp.worktree` before running `/sp.specify`.
-
 1. **Generate a concise short name** (2-4 words) for the branch:
    - Analyze the feature description and extract the most meaningful keywords
    - Create a 2-4 word short name that captures the essence of the feature

@@ -90,15 +90,8 @@ if [[ -z "$STAGE" ]]; then
   exit 1
 fi
 
-# Get repository root (supports worktrees)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f "$SCRIPT_DIR/common.sh" ]]; then
-  source "$SCRIPT_DIR/common.sh"
-  REPO_ROOT=$(get_repo_root)
-else
-  # Fallback if common.sh not found
-  REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-fi
+# Get repository root
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 SPECS_DIR="$REPO_ROOT/specs"
 
 # Check for template (try both locations)
